@@ -1,0 +1,107 @@
+const express = require("express");
+const bodyParser = require("body-parser");
+const axios = require("axios");
+
+const app = express();
+app.use(bodyParser.json());
+
+const token = "YOUR_ACCESS_TOKEN"; // Replace with your token
+const phoneNumberId = "YOUR_PHONE_NUMBER_ID"; // Replace with your Phone Number ID
+
+const sendMessage = async (to, message) => {
+  await axios.post(`https://graph.facebook.com/v18.0/${phoneNumberId}/messages`, {
+    messaging_product: "whatsapp",
+    to,
+    text: { body: message }
+  }, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+};
+
+app.post("/webhook", async (req, res) => {
+  const entry = req.body.entry?.[0];
+  const changes = entry?.changes?.[0];
+  const value = changes?.value;
+
+  const message = value?.messages?.[0];
+  const from = message?.from;
+  const type = message?.type;
+
+  if (message) {
+    let userMsg = "";
+    if (type === "text") {
+      userMsg = message.text.body.toLowerCase();
+    } else if (type === "image") {
+      await sendMessage(from, `Thank you! ✅\nYour Canva Pro access is now active. Enjoy designing with premium features! 🎨\nLet me know if you need any help. 🚀`);
+      return res.sendStatus(200);
+    }
+
+    // Flow 1
+    if (userMsg.includes("hello") || userMsg.includes("interested in canva pro") || userMsg.includes("send info")) {
+      await sendMessage(from, `Hi! 👋 Get Canva Pro lifetime access on your email address\n\n💡 Choose an option below:\n\n1️⃣ What is the price?\n2️⃣ How to Buy?\n3️⃣ Payment methods?\n4️⃣ Customer Support?\n\n🚨 Limited time offer — Hurry up!`);
+    }
+
+    else if (userMsg.includes("1") && !userMsg.includes("bonus")) {
+      await sendMessage(from, `💰 Total Rs. 250 (payment after activation)`);
+    }
+
+    else if (userMsg.includes("2") && !userMsg.includes("bonus")) {
+      await sendMessage(from, `📧 Send your email\n🚀 Get access, then make the payment\n\n*Note:* If your Canva Pro has been activated, so kindly type "Payment Details" & send.`);
+    }
+
+    else if (userMsg.includes("3") || userMsg.includes("payment method")) {
+      await sendMessage(from, `✅ Easypaisa\n✅ JazzCash`);
+    }
+
+    else if (userMsg.includes("4") || userMsg.includes("support")) {
+      await sendMessage(from, `💬 Chat with us anytime!`);
+    }
+
+    else if (userMsg.includes("payment details")) {
+      await sendMessage(from, `💡 Choose an option below:\n\n✅ Easypaisa\n✅ JazzCash\n\nPlease type an option like: *Easypaisa*, *JazzCash*.`);
+    }
+
+    else if (userMsg.includes("easypaisa")) {
+      await sendMessage(from, `*Bank Name:* Easypaisa\n*Account Number:* 03462410880\n*Account Name:* Samina Muhammad Yaseen\n\n*Note:* If you done the payment, so send the screenshot.`);
+    }
+
+    else if (userMsg.includes("jazzcash")) {
+      await sendMessage(from, `*Bank Name:* JazzCash\n*Account Number:* 03216027311\n*Account Name:* Samina Muhammad Yaseen\n\n*Note:* If you done the payment, so send the screenshot.`);
+    }
+
+    // Flow 2 with Bonus
+    else if (userMsg.includes("bonus") || userMsg.includes("free resources")) {
+      await sendMessage(from, `Hi! 👋 Get Canva Pro lifetime access on your email address\n\n💡 Choose an option below:\n\n1️⃣ What is the price?\n2️⃣ Where are the Bonus Items?\n3️⃣ How to Buy?\n4️⃣ Payment methods?\n5️⃣ Customer Support?\n\n🚨 Limited time offer — Hurry up!`);
+    }
+
+    else if (userMsg.includes("1") && userMsg.includes("bonus")) {
+      await sendMessage(from, `💰 Total Rs. 650 (payment after activation)`);
+    }
+
+    else if (userMsg.includes("2") && userMsg.includes("bonus")) {
+      await sendMessage(from, `*Here are the 5 Exclusive Bonus Items 👇*\n\n🎯 5000+ Advanced ChatGPT Prompts\n🎥 100+ Paid YouTube Courses\n📚 100+ Ebooks Worth Rs. 100K\n🛍️ Shopify Premium Themes Pack\n🎨 5000+ Canva Templates`);
+    }
+
+    else if (userMsg.includes("image")) {
+      await sendMessage(from, `Thank you! ✅\nYour Canva Pro access is now active. Enjoy designing with premium features!\n\nYou’ve also received:\n• 5000+ ChatGPT Prompts\n• 100+ Paid YouTube Courses\n• 100+ Ebooks worth 100k\n• Shopify Themes Pack\n• 5000+ Canva Templates\n\nLet me know if you need any help.`);
+    }
+  }
+
+  res.sendStatus(200);
+});
+
+// Meta verification route
+app.get("/webhook", (req, res) => {
+  const verify_token = "canvaprobot";
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  if (mode && token && token === verify_token) {
+    res.status(200).send(challenge);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+app.listen(3000, () => console.log("Bot is running"));
